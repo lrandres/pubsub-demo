@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Notifications Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      text-align: center;
+    }
+    #container {
+      max-width: 700px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    input[type="text"] {
+      width: 60%;
+      max-width: 400px;
+      padding: 6px;
+    }
+    button {
+      padding: 6px 12px;
+      margin-left: 4px;
+      cursor: pointer;
+    }
+    .panel {
+      margin-top: 16px;
+      border: 1px solid #ccc;
+      padding: 8px;
+      min-height: 60px;
+      background: #fafafa;
+    }
+    h1 {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Notifications Demo</h1>
+  <div id="container">
+    <!-- PUBLISHER -->
+    <div style="text-align:center; margin-bottom:1rem;">
+      <input id="pubMsg" type="text" placeholder="Type a message..." />
+      <button onclick="publishMessage()">Publish</button>
+    </div>
+
+    <!-- SUBSCRIBER A -->
+    <h3>Subscriber A (log)</h3>
+    <pre id="subLog" class="panel">(waiting for messages...)</pre>
+
+    <!-- SUBSCRIBER B -->
+    <h3>Subscriber B (last message)</h3>
+    <div id="subLast" class="panel">None yet</div>
+  </div>
+
+  <script>
+    // ===== Tiny Pub/Sub implementation =====
+    class PubSub {
+      constructor() {
+        this.topics = {};
+      }
+
+      subscribe(topic, handler) {
+        if (!this.topics[topic]) {
+          this.topics[topic] = new Set();
+        }
+        this.topics[topic].add(handler);
+        return () => {
+          this.topics[topic].delete(handler);
+          if (this.topics[topic].size === 0) {
+            delete this.topics[topic];
+          }
+        };
+      }
+
+      publish(topic, data) {
+        const handlers = this.topics[topic];
+        if (!handlers) return;
+        for (const h of handlers) h(data);
+      }
+    }
+
+    // Create a bus for this page
+    const bus = new PubSub();
+
+    const subLog  = document.getElementById("subLog");
+    const subLast = document.getElementById("subLast");
+
+    // Subscriber A: full log
+    bus.subscribe("notifications", (msg) => {
+      const time = new Date().toLocaleTimeString();
+      subLog.textContent += `\n[${time}] ${msg}`;
+    });
+
+    // Subscriber B: last message only
+    bus.subscribe("notifications", (msg) => {
+      subLast.textContent = msg;
+    });
+
+    // Publisher: called by the button
+    function publishMessage() {
+      const input = document.getElementById("pubMsg");
+      const text = input.value.trim();
+      if (!text) return;
+      bus.publish("notifications", text);
+      input.value = "";
+    }
+  </script>
+</body>
+</html>
